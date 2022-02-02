@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/valyala/fasthttp"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -92,6 +93,10 @@ type (
 	Transport interface {
 		Supports(r *http.Request) bool
 		Do(w http.ResponseWriter, r *http.Request, exec GraphExecutor)
+	}
+	FastTransport interface {
+		Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec GraphExecutor)
+		Supports(ctx *fasthttp.RequestCtx) bool
 	}
 )
 
