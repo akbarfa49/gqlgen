@@ -11,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	transport "github.com/99designs/gqlgen/graphql/handler/fasthttp_transport"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
+	"github.com/fasthttp/websocket"
 	"github.com/valyala/fasthttp"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -30,9 +31,15 @@ func NewFastServer(es graphql.ExecutableSchema) *FastServer {
 
 func NewDefaultFastServer(es graphql.ExecutableSchema) *FastServer {
 	srv := NewFastServer(es)
-
 	srv.AddTransport(transport.Websocket{
-		KeepAlivePingInterval: 10 * time.Second,
+		KeepAlivePingInterval: 2 * time.Second,
+		Upgrader: websocket.FastHTTPUpgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
+				return true
+			},
+		},
 	})
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

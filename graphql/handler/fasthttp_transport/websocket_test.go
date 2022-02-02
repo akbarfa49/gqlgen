@@ -11,7 +11,7 @@ import (
 
 	transport "github.com/99designs/gqlgen/graphql/handler/fasthttp_transport"
 	"github.com/99designs/gqlgen/graphql/handler/testserver"
-	"github.com/gorilla/websocket"
+	"github.com/fasthttp/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fasthttp"
@@ -145,8 +145,13 @@ func TestWebsocket(t *testing.T) {
 
 func TestWebsocketWithKeepAlive(t *testing.T) {
 	h := testserver.NewFast()
-	h.AddTransport(transport.Websocket{})
-
+	h.AddTransport(transport.Websocket{
+		KeepAlivePingInterval: 2 * time.Second,
+		Upgrader: websocket.FastHTTPUpgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+		},
+	})
 	lh := `localhost:` + randomPort()
 
 	go func() {

@@ -31,11 +31,12 @@ func (h GET) Supports(ctx *fasthttp.RequestCtx) bool {
 
 func (h GET) Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec graphql.GraphExecutor) {
 	ctx.Response.Header.Set("Content-Type", "application/json")
-
+	//log.Println(graphCtx)
 	raw := &graphql.RawParams{
-		Query:         string(ctx.URI().QueryArgs().Peek("query")),
+		Query:         string(ctx.URI().QueryArgs().Peek(`query`)),
 		OperationName: string(ctx.URI().QueryArgs().Peek("operationName")),
 	}
+
 	raw.ReadTime.Start = graphql.Now()
 
 	if variables := string(ctx.URI().QueryArgs().Peek("variables")); variables != "" {
@@ -45,7 +46,6 @@ func (h GET) Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec graphql
 			return
 		}
 	}
-
 	if extensions := string(ctx.URI().QueryArgs().Peek("extensions")); extensions != "" {
 		if err := jsonDecode(strings.NewReader(extensions), &raw.Extensions); err != nil {
 			ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -55,14 +55,15 @@ func (h GET) Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec graphql
 	}
 
 	raw.ReadTime.End = graphql.Now()
-
 	rc, err := exec.CreateOperationContext(graphCtx, raw)
+
 	if err != nil {
 		ctx.SetStatusCode(statusFor(err))
 		resp := exec.DispatchError(graphql.WithOperationContext(graphCtx, rc), err)
 		writeJson(ctx, resp)
 		return
 	}
+
 	op := rc.Doc.Operations.ForName(rc.OperationName)
 	if op.Operation != ast.Query {
 		ctx.SetStatusCode(fasthttp.StatusNotAcceptable)
@@ -71,6 +72,7 @@ func (h GET) Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec graphql
 	}
 
 	responses, ctxPr := exec.DispatchOperation(graphCtx, rc)
+
 	writeJson(ctx, responses(ctxPr))
 }
 

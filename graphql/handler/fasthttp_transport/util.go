@@ -10,11 +10,14 @@ import (
 )
 
 func writeJson(w io.Writer, response *graphql.Response) {
+
 	b, err := json.Marshal(response)
 	if err != nil {
 		panic(err)
 	}
+
 	w.Write(b)
+
 }
 
 func writeJsonError(w io.Writer, msg string) {

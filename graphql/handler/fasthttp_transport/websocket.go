@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -47,24 +48,28 @@ type (
 var _ graphql.FastTransport = Websocket{}
 
 func (t Websocket) Supports(r *fasthttp.RequestCtx) bool {
-
 	return string(r.Request.Header.Peek("Upgrade")) != ""
 }
 
 func (t Websocket) Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec graphql.GraphExecutor) {
+
 	t.injectGraphQLWSSubprotocols()
 	err := t.Upgrader.Upgrade(ctx, func(ws *websocket.Conn) {
 		var me messageExchanger
+		// log.Println(`ws running`)
 		switch ws.Subprotocol() {
 		default:
+			log.Println(`ws not supported by subprotocol`)
 			msg := websocket.FormatCloseMessage(websocket.CloseProtocolError, fmt.Sprintf("unsupported negotiated subprotocol %s", ws.Subprotocol()))
 			ws.WriteMessage(websocket.CloseMessage, msg)
 			return
 		case graphqlwsSubprotocol, "":
+			// log.Println(`client need to send subprotocol`)
 			// clients are required to send a subprotocol, to be backward compatible with the previous implementation we select
 			// "graphql-ws" by default
 			me = graphqlwsMessageExchanger{c: ws}
 		case graphqltransportwsSubprotocol:
+			// log.Println(`success`)
 			me = graphqltransportwsMessageExchanger{c: ws}
 		}
 
@@ -80,11 +85,10 @@ func (t Websocket) Do(ctx *fasthttp.RequestCtx, graphCtx context.Context, exec g
 		if !conn.init() {
 			return
 		}
-
 		conn.run()
 	})
 	if err != nil {
-		// log.Printf("unable to upgrade %T to websocket %s: ", ctx, err.Error())
+		log.Printf("unable to upgrade %T to websocket %s: ", ctx, err.Error())
 		SendErrorf(ctx, http.StatusBadRequest, "unable to upgrade")
 		return
 	}
@@ -148,6 +152,7 @@ func (c *wsConnection) run() {
 	// We create a cancellation that will shutdown the keep-alive when we leave
 	// this function.
 	ctx, cancel := context.WithCancel(c.ctx)
+
 	defer func() {
 		cancel()
 		c.close(websocket.CloseAbnormalClosure, "unexpected closure")
@@ -180,6 +185,7 @@ func (c *wsConnection) run() {
 	for {
 		start := graphql.Now()
 		m, err := c.me.NextMessage()
+
 		if err != nil {
 			// TODO: better error handling here
 			return
